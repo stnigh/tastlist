@@ -3,394 +3,318 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>透明任务清单 - 极简待办</title>
+    <title>悬浮任务清单</title>
     <style>
+        /* 完全透明背景 - 无白边 */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            user-select: none; /* 避免桌面拖动时选中文字，提升透明窗口体验，但不影响输入 */
+        }
+
+        html, body {
+            background: transparent !important;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
         }
 
         body {
-            background: transparent;  /* 完全透明背景，实现“桌面透明显示” */
-            min-height: 100vh;
+            background: transparent !important;
             display: flex;
             justify-content: center;
-            align-items: flex-start;
-            font-family: 'Segoe UI', 'Roboto', 'PingFang SC', 'Microsoft YaHei', system-ui, -apple-system, sans-serif;
-            padding: 20px;
-            /* 让整个body背景透明，透过桌面壁纸 */
+            align-items: center;
+            font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            padding: 8px;
         }
 
-        /* 主应用卡片 - 半透玻璃质感，既可见桌面背景又清晰可读 */
-        .app-container {
-            width: 100%;
-            max-width: 680px;
-            margin: 0 auto;
-            background: rgba(30, 30, 40, 0.75);    /* 半透明深色玻璃效果 */
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border-radius: 32px;
-            box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
+        /* 主卡片 - 可拖拽的悬浮窗口 */
+        .floating-card {
+            width: 380px;
+            max-width: 90vw;
+            background: rgba(20, 22, 27, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.08);
             overflow: hidden;
-            transition: all 0.2s ease;
             color: #f0f0f0;
+            cursor: default;
         }
 
-        /* 头部区域 */
-        .header {
-            padding: 20px 24px 12px 24px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+        /* 拖拽区域 */
+        .drag-area {
+            padding: 16px 20px 10px 20px;
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            cursor: move;
+            user-select: none;
         }
 
-        .header h1 {
-            font-size: 1.7rem;
+        .drag-area h1 {
+            font-size: 1.2rem;
             font-weight: 500;
-            letter-spacing: -0.3px;
-            background: linear-gradient(135deg, #ffffff, #c0c0ff);
-            background-clip: text;
-            -webkit-background-clip: text;
-            color: transparent;
-            display: inline-block;
-        }
-
-        .sub {
-            font-size: 0.75rem;
-            opacity: 0.7;
-            margin-top: 6px;
-        }
-
-        /* 添加任务表单区域 */
-        .add-task-area {
-            padding: 20px 24px 12px 24px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-            align-items: flex-end;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .input-group {
-            flex: 2;
-            min-width: 160px;
-        }
-
-        .input-group label {
-            display: block;
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 6px;
-            opacity: 0.7;
-        }
-
-        .input-group input, 
-        .input-group .datetime-input {
-            width: 100%;
-            background: rgba(20, 20, 28, 0.7);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 16px;
-            padding: 10px 14px;
-            font-size: 0.85rem;
-            color: white;
-            outline: none;
-            transition: 0.2s;
-            font-family: inherit;
-        }
-
-        .input-group input:focus {
-            border-color: #8a8aff;
-            background: rgba(30, 30, 40, 0.9);
-        }
-
-        /* 日期时间本地化样式 */
-        input[type="datetime-local"] {
-            color-scheme: dark;
-            font-family: monospace;
-        }
-
-        .add-btn {
-            background: #6c5ce7;
-            border: none;
-            border-radius: 40px;
-            padding: 10px 22px;
-            font-weight: 600;
-            font-size: 0.9rem;
-            color: white;
             display: flex;
             align-items: center;
             gap: 8px;
+        }
+
+        .drag-area h1 span {
+            font-size: 1rem;
+            opacity: 0.6;
+        }
+
+        .drag-hint {
+            font-size: 0.6rem;
+            opacity: 0.4;
+            margin-top: 6px;
+        }
+
+        /* 添加任务区域 */
+        .add-area {
+            padding: 16px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .task-input-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .task-input-row input {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 10px 12px;
+            font-size: 0.85rem;
+            color: white;
+            outline: none;
+        }
+
+        .task-input-row input:focus {
+            border-color: #6c5ce7;
+        }
+
+        .time-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .time-input {
+            flex: 1;
+        }
+
+        .time-input label {
+            font-size: 0.6rem;
+            opacity: 0.6;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .time-input input {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            padding: 8px 10px;
+            font-size: 0.7rem;
+            color: white;
+            outline: none;
+        }
+
+        .add-btn {
+            width: 100%;
+            background: #6c5ce7;
+            border: none;
+            border-radius: 14px;
+            padding: 10px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: white;
             cursor: pointer;
-            transition: 0.2s;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-            margin-bottom: 2px;
+            transition: 0.15s;
         }
 
         .add-btn:hover {
             background: #5b4bc4;
-            transform: scale(0.98);
         }
 
-        /* 任务列表区域 */
-        .tasks-list {
-            padding: 16px 16px 24px 16px;
-            max-height: 60vh;
+        /* 任务列表 */
+        .tasks-area {
+            max-height: 400px;
             overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
+            padding: 12px 16px 20px;
         }
 
-        /* 自定义滚动条 */
-        .tasks-list::-webkit-scrollbar {
-            width: 5px;
+        .tasks-area::-webkit-scrollbar {
+            width: 4px;
         }
-        .tasks-list::-webkit-scrollbar-track {
+
+        .tasks-area::-webkit-scrollbar-track {
             background: transparent;
         }
-        .tasks-list::-webkit-scrollbar-thumb {
-            background: rgba(255,255,255,0.3);
-            border-radius: 10px;
+
+        .tasks-area::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
         }
 
-        /* 单个任务卡片 */
         .task-item {
-            background: rgba(255, 255, 255, 0.08);
-            backdrop-filter: blur(4px);
-            border-radius: 24px;
-            padding: 14px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 14px;
+            padding: 12px;
+            margin-bottom: 8px;
             display: flex;
-            flex-wrap: wrap;
-            align-items: center;
+            align-items: flex-start;
             gap: 12px;
-            transition: all 0.2s ease;
-            border: 1px solid rgba(255,255,255,0.05);
+            transition: 0.1s;
         }
 
-        /* 左侧复选框区域 (大方框) */
-        .task-check {
+        .checkbox {
+            width: 22px;
+            height: 22px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            cursor: pointer;
             flex-shrink: 0;
-        }
-
-        .custom-checkbox {
-            width: 26px;
-            height: 26px;
-            background: rgba(255,255,255,0.15);
-            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
-            cursor: pointer;
-            transition: 0.15s;
-            border: 1px solid rgba(255,255,255,0.3);
+            transition: 0.1s;
         }
 
-        .custom-checkbox:hover {
-            background: rgba(255,255,255,0.25);
+        .checkbox:hover {
+            background: rgba(255, 255, 255, 0.2);
         }
 
-        .custom-checkbox.checked {
+        .checkbox.checked {
             background: #4caf50;
-            border-color: #4caf50;
         }
 
-        .custom-checkbox.checked::after {
+        .checkbox.checked::after {
             content: "✓";
-            font-size: 18px;
+            font-size: 14px;
             font-weight: bold;
             color: white;
         }
 
-        /* 任务内容区域 */
-        .task-content {
-            flex: 3;
-            min-width: 160px;
+        .task-info {
+            flex: 1;
         }
 
         .task-title {
-            font-size: 1rem;
+            font-size: 0.85rem;
             font-weight: 500;
             word-break: break-word;
             margin-bottom: 6px;
         }
 
-        /* 时间区域：截止时间 + 计划完成时间 并排 */
         .task-times {
             display: flex;
-            flex-wrap: wrap;
-            gap: 16px;
-            margin-top: 6px;
-            font-size: 0.7rem;
-            opacity: 0.8;
+            gap: 12px;
+            font-size: 0.6rem;
+            opacity: 0.7;
         }
 
-        .time-badge {
+        .task-times span {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            background: rgba(0,0,0,0.4);
-            padding: 4px 10px;
-            border-radius: 40px;
-            letter-spacing: 0.3px;
+            gap: 4px;
         }
 
-        .time-badge.deadline {
-            border-left: 2px solid #ff8c5a;
-        }
-        .time-badge.planned {
-            border-left: 2px solid #6c5ce7;
-        }
-        .material-symbol {
-            font-size: 12px;
-        }
-
-        /* 右侧可选删除占位，不需要删除按钮，但任务消失由勾选完成实现 */
-        .task-action {
-            flex-shrink: 0;
-            font-size: 12px;
-            color: rgba(255,255,255,0.5);
-            cursor: default;
-        }
-
-        /* 空状态提示 */
-        .empty-state {
+        .empty {
             text-align: center;
-            padding: 48px 20px;
-            opacity: 0.6;
-            font-style: italic;
-        }
-
-        /* 辅助样式 */
-        button {
-            background: none;
-            border: none;
-        }
-        .footer-note {
-            text-align: center;
-            font-size: 0.65rem;
-            padding: 12px;
-            border-top: 1px solid rgba(255,255,255,0.05);
+            padding: 40px 20px;
             opacity: 0.5;
+            font-size: 0.8rem;
+        }
+
+        .footer {
+            padding: 10px 16px 14px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 0.55rem;
+            text-align: center;
+            opacity: 0.4;
         }
     </style>
 </head>
 <body>
-<div class="app-container">
-    <div class="header">
-        <h1>◻ 透明任务清单</h1>
-        <div class="sub">点击方框 → 任务完成并消失 · 支持截止/计划时间</div>
+<div class="floating-card" id="dragCard">
+    <div class="drag-area" id="dragHandle">
+        <h1>📋 任务清单 <span>◻</span></h1>
+        <div class="drag-hint">按住此处拖动窗口</div>
     </div>
 
-    <div class="add-task-area">
-        <div class="input-group" style="flex:2">
-            <label>📝 任务内容</label>
-            <input type="text" id="taskTitleInput" placeholder="写周报, 买咖啡..." autocomplete="off">
+    <div class="add-area">
+        <div class="task-input-row">
+            <input type="text" id="taskTitle" placeholder="写周报, 买咖啡..." autocomplete="off">
         </div>
-        <div class="input-group">
-            <label>⏰ 截止时间</label>
-            <input type="datetime-local" id="deadlineInput">
+        <div class="time-row">
+            <div class="time-input">
+                <label>⏰ 截止</label>
+                <input type="datetime-local" id="deadline">
+            </div>
+            <div class="time-input">
+                <label>📅 计划</label>
+                <input type="datetime-local" id="planned">
+            </div>
         </div>
-        <div class="input-group">
-            <label>📅 计划完成时间</label>
-            <input type="datetime-local" id="plannedInput">
-        </div>
-        <button class="add-btn" id="addTaskBtn">+ 添加任务</button>
+        <button class="add-btn" id="addBtn">+ 添加任务</button>
     </div>
 
-    <div class="tasks-list" id="tasksListContainer">
-        <!-- 动态任务列表会渲染在这里 -->
-        <div class="empty-state">✨ 暂无任务，添加一条任务吧~</div>
+    <div class="tasks-area" id="tasksList">
+        <div class="empty">✨ 暂无任务，点击上方添加</div>
     </div>
-    <div class="footer-note">✔ 点击任务前的小方框 → 任务即消失 (完成归档)</div>
+    <div class="footer">✔ 点击方框 → 任务消失</div>
 </div>
 
 <script>
-    // ---------- 任务数据模型 ----------
-    // 每个任务: { id, title, deadline, planned, completed (但completed为true时直接移除，不显示) }
-    // 由于需求: "点击小方框表示完成任务，任务消失"，因此我们不在界面中保留已完成任务。
-    // 所以任务列表仅存储未完成任务。当点击勾选框时，从数组中删除该任务并重新渲染。
-    // 同时支持添加任务，每个任务都有截止时间和计划完成时间 (可留空，留空显示“未设置”)
-    
-    // 获取本地存储的key
-    const STORAGE_KEY = 'transparent_todo_list';
-    
-    // 任务数组 (未完成)
+    const STORAGE_KEY = 'floating_todo';
     let tasks = [];
 
-    // DOM 元素
-    const taskTitleInput = document.getElementById('taskTitleInput');
-    const deadlineInput = document.getElementById('deadlineInput');
-    const plannedInput = document.getElementById('plannedInput');
-    const addBtn = document.getElementById('addTaskBtn');
-    const tasksContainer = document.getElementById('tasksListContainer');
+    const taskTitle = document.getElementById('taskTitle');
+    const deadline = document.getElementById('deadline');
+    const planned = document.getElementById('planned');
+    const addBtn = document.getElementById('addBtn');
+    const tasksList = document.getElementById('tasksList');
 
-    // 辅助函数: 格式化日期时间显示 (datetime-local 存储的值格式 "YYYY-MM-DDThh:mm")
-    function formatDateTime(dateTimeStr) {
-        if (!dateTimeStr) return '未设置';
-        // 将 "2025-04-20T15:30" 转为更友好的显示
+    // 设置默认时间
+    function setDefaultTimes() {
+        const now = new Date();
+        const tomorrow = new Date(now);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(15, 0, 0, 0);
+        const dayAfter = new Date(now);
+        dayAfter.setDate(dayAfter.getDate() + 2);
+        dayAfter.setHours(15, 0, 0, 0);
+
+        if (!deadline.value) deadline.value = formatDateTimeLocal(dayAfter);
+        if (!planned.value) planned.value = formatDateTimeLocal(tomorrow);
+    }
+
+    function formatDateTimeLocal(date) {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        const h = String(date.getHours()).padStart(2, '0');
+        const min = String(date.getMinutes()).padStart(2, '0');
+        return `${y}-${m}-${d}T${h}:${min}`;
+    }
+
+    function formatDisplay(dateStr) {
+        if (!dateStr) return '未设置';
         try {
-            const date = new Date(dateTimeStr);
-            if (isNaN(date.getTime())) return dateTimeStr;
-            return date.toLocaleString('zh-CN', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit', hour12: false });
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return dateStr;
+            return `${d.getMonth()+1}/${d.getDate()} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
         } catch(e) {
-            return dateTimeStr;
+            return dateStr;
         }
     }
 
-    // 渲染任务列表 (仅未完成任务)
-    function renderTasks() {
-        if (!tasksContainer) return;
-        
-        if (tasks.length === 0) {
-            tasksContainer.innerHTML = `<div class="empty-state">📭 空空如也 ~ 添加新任务吧</div>`;
-            return;
-        }
-        
-        // 生成所有任务卡片
-        let html = '';
-        for (let i = 0; i < tasks.length; i++) {
-            const task = tasks[i];
-            // 转义标题防止XSS
-            const safeTitle = escapeHtml(task.title);
-            const deadlineDisplay = formatDateTime(task.deadline);
-            const plannedDisplay = formatDateTime(task.planned);
-            
-            html += `
-                <div class="task-item" data-task-id="${task.id}">
-                    <div class="task-check">
-                        <div class="custom-checkbox" data-id="${task.id}"></div>
-                    </div>
-                    <div class="task-content">
-                        <div class="task-title">${safeTitle}</div>
-                        <div class="task-times">
-                            <span class="time-badge deadline">📅 截止: ${deadlineDisplay}</span>
-                            <span class="time-badge planned">🎯 计划: ${plannedDisplay}</span>
-                        </div>
-                    </div>
-                    <div class="task-action">
-                        <!-- 无删除按钮，只有勾选框让任务消失 -->
-                    </div>
-                </div>
-            `;
-        }
-        
-        tasksContainer.innerHTML = html;
-        
-        // 绑定所有复选框的点击事件 (事件委托也可以，但这里直接查询后绑定)
-        const checkboxes = document.querySelectorAll('.custom-checkbox');
-        checkboxes.forEach(checkbox => {
-            checkbox.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const taskId = checkbox.getAttribute('data-id');
-                if (taskId) {
-                    completeTaskById(taskId);
-                }
-            });
-        });
-    }
-    
-    // 简单的防XSS
     function escapeHtml(str) {
         if (!str) return '';
         return str.replace(/[&<>]/g, function(m) {
@@ -398,160 +322,124 @@
             if (m === '<') return '&lt;';
             if (m === '>') return '&gt;';
             return m;
-        }).replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function(c) {
-            return c;
         });
     }
-    
-    // 完成任务：根据id从tasks中删除任务，任务消失，并且保存到localStorage
-    function completeTaskById(taskId) {
-        // 找到任务索引并删除
-        const index = tasks.findIndex(t => t.id == taskId);
-        if (index !== -1) {
-            tasks.splice(index, 1);
-            saveTasksToLocal();
-            renderTasks();
-        }
-    }
-    
-    // 添加新任务
-    function addNewTask() {
-        let title = taskTitleInput.value.trim();
-        if (title === "") {
-            // 简单提醒，透明窗口可轻微提醒但不破坏体验
-            alert("请填写任务内容~");
-            return;
-        }
-        
-        const deadline = deadlineInput.value;     // 格式 "YYYY-MM-DDThh:mm"
-        const planned = plannedInput.value;
-        
-        // 创建任务对象
-        const newTask = {
-            id: Date.now() + Math.random().toString(36).substr(2, 6),
-            title: title,
-            deadline: deadline || null,
-            planned: planned || null,
-            createdAt: new Date().toISOString()
-        };
-        
-        tasks.push(newTask);
-        saveTasksToLocal();
-        
-        // 清空输入框，保留时间选项不清空（方便连续添加相似时间？但为了用户体验，建议保留时间不清空，但任务标题清空）
-        taskTitleInput.value = '';
-        // 注意: 截止时间和计划完成时间不清空，便于用户再次添加时使用相近时间，但也可以保留，不做强制
-        // 但为了体验，让焦点回到任务标题框
-        taskTitleInput.focus();
-        
-        renderTasks();
-    }
-    
-    // 保存至localStorage
-    function saveTasksToLocal() {
+
+    function saveTasks() {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
     }
-    
-    // 加载本地存储数据
-    function loadTasksFromLocal() {
+
+    function loadTasks() {
         const stored = localStorage.getItem(STORAGE_KEY);
         if (stored) {
             try {
-                const parsed = JSON.parse(stored);
-                if (Array.isArray(parsed)) {
-                    tasks = parsed;
-                } else {
-                    tasks = [];
-                }
-            } catch(e) {
-                tasks = [];
-            }
-        } else {
-            // 可添加示例任务帮助展示效果 (展示两条美观的示例，但完全透明风格，让用户理解)
+                tasks = JSON.parse(stored);
+            } catch(e) { tasks = []; }
+        }
+        if (tasks.length === 0) {
             tasks = [
-                {
-                    id: 'demo1',
-                    title: '✨ 示例：每周团队会议',
-                    deadline: getFutureDateTime(2),   // 后天下午14:00
-                    planned: getFutureDateTime(1),    // 明天下午15:00
-                },
-                {
-                    id: 'demo2',
-                    title: '🎨 设计透明主题壁纸',
-                    deadline: getFutureDateTime(5),
-                    planned: getFutureDateTime(3),
-                }
+                { id: 'demo1', title: '✨ 每周团队会议', deadline: getFutureDate(2, 14), planned: getFutureDate(1, 15) },
+                { id: 'demo2', title: '🎨 设计透明主题', deadline: getFutureDate(5, 14), planned: getFutureDate(3, 15) }
             ];
         }
-        // 确保每个任务都有正确的字段结构（兼容旧版）
-        tasks = tasks.filter(t => t && typeof t === 'object').map(t => {
-            return {
-                id: t.id || Date.now() + Math.random(),
-                title: t.title || '未命名任务',
-                deadline: t.deadline || null,
-                planned: t.planned || null,
-            };
-        });
         renderTasks();
     }
-    
-    // 辅助生成未来日期时间字符串 (datetime-local 需要)
-    function getFutureDateTime(daysLater) {
-        const date = new Date();
-        date.setDate(date.getDate() + daysLater);
-        date.setHours(15, 0, 0, 0); // 默认下午3点
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        const hours = String(date.getHours()).padStart(2, '0');
-        const minutes = String(date.getMinutes()).padStart(2, '0');
-        return `${year}-${month}-${day}T${hours}:${minutes}`;
+
+    function getFutureDate(daysLater, hour) {
+        const d = new Date();
+        d.setDate(d.getDate() + daysLater);
+        d.setHours(hour, 0, 0, 0);
+        return d.toISOString().slice(0, 16);
     }
-    
-    // 添加全局键盘支持（按回车添加任务）
-    function bindEvents() {
-        addBtn.addEventListener('click', addNewTask);
-        taskTitleInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                addNewTask();
-            }
+
+    function addTask() {
+        const title = taskTitle.value.trim();
+        if (!title) {
+            alert('请输入任务内容');
+            return;
+        }
+        tasks.push({
+            id: Date.now().toString(),
+            title: title,
+            deadline: deadline.value || null,
+            planned: planned.value || null
         });
-        // 可选: 为日期输入也支持回车添加 (不做严格)
+        saveTasks();
+        renderTasks();
+        taskTitle.value = '';
+        taskTitle.focus();
     }
-    
-    // 让窗口支持透明背景自适应 (body透明，已经设置)
-    // 额外注意: 某些桌面环境如果使用Electron或WebView，此页面可以直接用浏览器打开，背景透明依赖于浏览器自身是否支持透明背景。
-    // 标准Chrome/Edge打开html文件时body透明会显示白色背景，因为默认浏览器有白色底色。
-    // 为了实现“桌面上透明显示”，需要用户使用支持透明窗口的工具或使用“透明浏览器窗口”扩展，但本设计代码已完全满足透明样式需求。
-    // 为了让纯浏览器环境也能有一定透明玻璃效果，背景透明但卡片背后会显示浏览器默认背景，因此给html,body强制透明。
-    // 此外，如果用户使用“透明窗口小工具”加载此html，会完美呈现桌面穿透效果。
-    // 同时添加一个额外的样式强制html背景透明:
-    const style = document.createElement('style');
-    style.textContent = `
-        html, body {
-            background-color: transparent !important;
-        }
-    `;
-    document.head.appendChild(style);
-    
-    // 初始化应用
-    function init() {
-        loadTasksFromLocal();
-        bindEvents();
-        // 设置默认的日期时间初始值（可选，便于演示: 让截止时间和计划时间预设一些推荐值，但不影响空状态）
-        if (!deadlineInput.value) {
-            // 默认截止时间为后天
-            const defaultDeadline = getFutureDateTime(2);
-            deadlineInput.value = defaultDeadline;
-        }
-        if (!plannedInput.value) {
-            const defaultPlanned = getFutureDateTime(1);
-            plannedInput.value = defaultPlanned;
-        }
+
+    function completeTask(id) {
+        tasks = tasks.filter(t => t.id != id);
+        saveTasks();
+        renderTasks();
     }
-    
-    init();
+
+    function renderTasks() {
+        if (tasks.length === 0) {
+            tasksList.innerHTML = '<div class="empty">🎯 完成啦！添加新任务~</div>';
+            return;
+        }
+        let html = '';
+        for (let t of tasks) {
+            html += `
+                <div class="task-item">
+                    <div class="checkbox" onclick="window.completeTask('${t.id}')"></div>
+                    <div class="task-info">
+                        <div class="task-title">${escapeHtml(t.title)}</div>
+                        <div class="task-times">
+                            <span>📅 截止 ${formatDisplay(t.deadline)}</span>
+                            <span>🎯 计划 ${formatDisplay(t.planned)}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        tasksList.innerHTML = html;
+    }
+
+    // 挂载全局函数
+    window.completeTask = completeTask;
+    window.addTask = addTask;
+
+    // 拖拽功能
+    function initDrag() {
+        const card = document.getElementById('dragCard');
+        const handle = document.getElementById('dragHandle');
+        let isDragging = false;
+        let offsetX, offsetY;
+
+        handle.addEventListener('mousedown', (e) => {
+            if (e.target.closest('input') || e.target.closest('button')) return;
+            isDragging = true;
+            offsetX = e.clientX - card.offsetLeft;
+            offsetY = e.clientY - card.offsetTop;
+            card.style.position = 'relative';
+            card.style.cursor = 'grabbing';
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            card.style.position = 'fixed';
+            card.style.left = (e.clientX - offsetX) + 'px';
+            card.style.top = (e.clientY - offsetY) + 'px';
+            card.style.margin = '0';
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+            card.style.cursor = '';
+        });
+    }
+
+    addBtn.addEventListener('click', addTask);
+    taskTitle.addEventListener('keypress', (e) => { if (e.key === 'Enter') addTask(); });
+
+    setDefaultTimes();
+    loadTasks();
+    initDrag();
 </script>
 </body>
 </html>
